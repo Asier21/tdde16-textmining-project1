@@ -21,3 +21,6 @@ Thumbs.db
 models/fasttext/
 *.bin
 *.bin.gz
+models/fasttext/
+*.bin
+*.bin.gz
