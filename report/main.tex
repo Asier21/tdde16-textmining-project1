@@ -1,0 +1,159 @@
+\documentclass[11pt]{article}
+\usepackage{acl}
+
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+
+% Recomendados para tablas bonitas
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\title{Semantic Robustness vs Computational Cost:\\
+A Comparative Study of Text Representations for AG News Classification}
+
+\author{Asier Iglesias Alconero \\
+  Link{\"o}ping University \\
+  \texttt{asiig969@liu.se}
+}
+
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Text representation plays a crucial role in document classification, directly affecting both predictive performance and computational efficiency. In this work, we study the trade-off between semantic robustness and computational cost across different text representations. Using the AG News dataset, we compare TF-IDF, averaged fastText word embeddings, and sentence embeddings produced by SBERT under a fixed logistic regression classifier to isolate the impact of the representation itself.
+
+Experimental results show that TF-IDF achieves the highest classification performance, reaching an accuracy of 0.9217 and a macro-F1 score of 0.9215, while maintaining relatively low computational cost. Averaged fastText embeddings yield lower performance (macro-F1 of 0.8849) with compact representations, whereas SBERT improves over fastText (macro-F1 of 0.8969) but incurs a substantially higher vectorization cost. These findings indicate that increased semantic richness does not necessarily translate into improved accuracy for lexically driven tasks such as news topic classification.
+
+Overall, our results highlight the importance of selecting text representations based on task characteristics and resource constraints, rather than representational complexity alone.
+\end{abstract}
+
+
+\section{Introduction}
+% TODO: motivación + problema + research question + contribuciones
+% - Por qué importa la representación
+% - Qué es robustez semántica (en este contexto)
+% - Qué es coste computacional (cómo lo mediremos)
+% - Research question (una frase)
+% - Contributions (2-3 bullets)
+Document classification is a fundamental task in text mining and natural language processing, with applications ranging from news categorization to information filtering and content moderation. The performance of document classification systems strongly depends on how textual data is represented, as raw text must be transformed into numerical features that machine learning models can process. Consequently, the choice of text representation plays a central role in determining both the effectiveness and the efficiency of classification models.
+
+
+Traditional text representation methods, such as bag-of-words and TF-IDF, have been widely adopted due to their simplicity and strong performance in many classification tasks. However, these approaches rely heavily on surface-level lexical features and exact word overlap, which limits their ability to capture semantic similarity between documents. As a result, texts that express similar meanings using different vocabularies or paraphrased formulations may be poorly represented, leading to reduced robustness in classification performance.
+
+
+Recent advances in distributed representations, including word and sentence embeddings, aim to address these limitations by encoding semantic information beyond exact lexical matches. By mapping words or entire documents into continuous vector spaces, embedding-based representations can capture semantic similarity and contextual relationships more effectively than traditional sparse representations. However, these gains in semantic robustness typically come at the cost of increased computational complexity, higher dimensional representations, and longer training or inference times.
+
+In this work, we conduct a comparative study of different text representations for document classification, focusing on the trade-off between semantic robustness and computational cost. Using the AG News dataset, we evaluate TF-IDF, averaged word embeddings, and sentence embeddings under a fixed classification model to isolate the impact of the representation itself. We assess both predictive performance and efficiency through standard classification metrics and computational measurements, and provide an error analysis to highlight qualitative differences between representations. Our study aims to clarify when more semantically rich representations justify their additional computational overhead in practical text mining scenarios.
+
+\section{Related Work}
+% TODO: 3 bloques con 2-3 citas cada uno
+% - TF-IDF / BoW para clasificación
+% - Word embeddings (Word2Vec/fastText) como representación
+% - Sentence embeddings (SBERT) y clasificación
+Early approaches to document classification relied on sparse, vocabulary-based representations such as bag-of-words and TF-IDF. These methods represent documents as high-dimensional vectors weighted by term frequency statistics and have shown strong performance in a wide range of text classification tasks due to their simplicity and efficiency \citep{salton1988term,joachims1998text}. Despite their effectiveness, such representations are inherently limited by their dependence on exact lexical overlap and are unable to capture semantic similarity between words or phrases.
+
+To address these limitations, distributed word representations such as Word2Vec and GloVe were introduced, enabling words to be embedded into continuous vector spaces that encode semantic relationships \citep{mikolov2013efficient,pennington2014glove}. For document-level tasks, word embeddings are often aggregated using simple pooling strategies, such as averaging, to obtain fixed-length representations. Prior work has shown that these representations can improve generalization by capturing semantic information beyond surface-level vocabulary, while maintaining relatively low computational cost compared to more complex models \citep{joulin2017bag}.
+
+More recently, sentence-level and document-level embeddings have been proposed to directly encode entire texts into semantically meaningful vectors. Models such as Sentence-BERT extend transformer-based architectures to produce sentence embeddings optimized for semantic similarity tasks \citep{reimers2019sentence}. These representations have demonstrated strong performance across various downstream applications, including classification, clustering, and retrieval. However, their increased representational power typically comes with higher computational requirements, raising questions about their practical efficiency compared to simpler text representations. This trade-off between semantic robustness and computational cost motivates a systematic comparison of text representations under a controlled classification setting.
+
+\section{Dataset}
+% TODO: describir AG News (clases, split, tamaño, ejemplo)
+% Incluir 1 ejemplo de texto + label.
+We conduct our experiments on the AG News classification dataset, a widely used benchmark for topic-based document classification. The dataset consists of news articles collected from various online sources and annotated into four high-level categories: \textit{World}, \textit{Sports}, \textit{Business}, and \textit{Science/Technology}. Each instance contains a short news title and description, which together form the input text for classification.
+
+The dataset is provided with a predefined train-test split, comprising approximately 120,000 training samples and 7,600 test samples, with balanced class distributions. This setup enables reproducible evaluation and facilitates comparison with prior work in the literature.
+
+AG News is particularly suitable for studying semantic robustness in text representations, as many documents express similar topics using diverse vocabularies and stylistic variations. As a result, classification performance depends not only on lexical overlap but also on the ability to capture semantic similarity. These characteristics make the dataset well suited for analyzing the trade-off between representational quality and computational cost.
+
+The dataset is publicly available and commonly distributed through platforms such as Kaggle, based on the original AG News corpus. It is intended for research and educational purposes, and contains no personal or sensitive information. Despite its popularity, the dataset is limited to short news texts and coarse-grained topic labels, which may restrict fine-grained semantic analysis.
+
+
+\section{Methodology}
+
+This section describes the experimental pipeline used to evaluate different text representations under a controlled document classification setting. To isolate the impact of the text representation, all experiments share the same preprocessing steps, classifier, and evaluation protocol, differing only in how documents are represented.
+
+\subsection{Preprocessing}
+All documents are lowercased and tokenized using standard tokenization tools. No aggressive text normalization is applied in order to preserve semantic information and avoid introducing representation-specific biases. Stopword removal is applied only for TF-IDF representations, following common practice, while embedding-based representations operate on the raw token sequences.
+
+\subsection{Text Representations}
+We compare three widely used text representation strategies:
+
+\textbf{TF-IDF.} Documents are represented using term frequency–inverse document frequency vectors with unigram and bigram features. The resulting vectors are high-dimensional and sparse, capturing surface-level lexical information while remaining computationally efficient.
+
+\textbf{Averaged word embeddings.} Each document is represented as the average of its constituent word embeddings. Pre-trained word vectors are used, allowing the representation to capture basic semantic relationships while maintaining a fixed-dimensional and relatively lightweight representation.
+
+\textbf{Sentence embeddings.} Documents are encoded using a pre-trained sentence embedding model, which directly maps entire texts into dense, low-dimensional vectors optimized for semantic similarity. This representation aims to capture higher-level contextual and semantic information beyond individual words.
+
+\subsection{Classifier}
+To ensure a fair comparison across representations, we employ a single classification model for all experiments. A logistic regression classifier is used due to its simplicity, interpretability, and widespread use in text classification tasks. Hyperparameters are kept consistent across representations to prevent confounding effects and to isolate the influence of the input representation.
+
+\subsection{Efficiency Measurements}
+In addition to predictive performance, we evaluate the computational efficiency of each representation. We measure vectorization time, training time, and inference time under the same hardware and software conditions. Representation dimensionality is also reported as an indicator of memory requirements. All timing measurements are averaged over multiple runs to reduce variance.
+
+
+\section{Experiments}
+All experiments are conducted using the predefined train-test split of the AG News dataset to ensure reproducibility. Classification performance is evaluated using accuracy and macro-averaged F1 score, which accounts for potential class imbalance. All models are implemented in Python using standard machine learning libraries, including scikit-learn for classification and sentence-transformers for sentence embeddings. Timing measurements are performed on the same machine under identical conditions to ensure a fair comparison of computational cost across representations.
+
+\section{Results}
+% TODO: tabla principal (Accuracy, Macro-F1, tiempos, dim)
+% + 1 figura (Performance vs Cost)
+Table~\ref{tab:main_results} reports the classification performance and computational efficiency of the evaluated text representations on the AG News dataset using a fixed logistic regression classifier. Among the compared methods, TF-IDF achieves the highest predictive performance, reaching an accuracy of 0.9217 and a macro-F1 score of 0.9215. This result highlights the strong effectiveness of sparse lexical representations for topic-based news classification.
+
+Embedding-based representations exhibit different trade-offs between performance and computational cost. Averaged fastText embeddings result in lower classification performance compared to TF-IDF, with a macro-F1 score of 0.8849, while maintaining a low-dimensional representation (300 dimensions). Sentence embeddings produced by SBERT yield improved performance over fastText, achieving a macro-F1 score of 0.8969, but remain below the TF-IDF baseline in this setting.
+
+From an efficiency perspective, the cost of vectorization varies substantially across representations. TF-IDF vectorization requires approximately 14.6 seconds, whereas fastText averaging increases this cost to 61.1 seconds due to token-level embedding lookup. SBERT incurs a significantly higher computational cost, with vectorization taking over 1,290 seconds on the same machine. In contrast, training and inference times for the logistic regression classifier remain relatively small across all representations, indicating that the primary computational bottleneck lies in the text representation step.
+\begin{table}[t]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Representation} & \textbf{Acc.} & \textbf{Macro-F1} & \textbf{Vec. (s)} & \textbf{Train (s)} & \textbf{Dim} \\
+\midrule
+TF-IDF (1--2, 50k) & 0.9217 & 0.9215 & 14.566 & 11.620 & 50000 \\
+fastText avg (cc.en.300) & 0.8851 & 0.8849 & 61.074 & 7.222 & 300 \\
+SBERT (MiniLM-L6-v2) & 0.8970 & 0.8969 & 1291.760 & 6.430 & 384 \\
+\bottomrule
+\end{tabular}
+\caption{Performance and efficiency comparison on AG News using a fixed logistic regression classifier. Vec. denotes representation (vectorization) time measured on the same machine.}
+\label{tab:main_results}
+\end{table}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig_tradeoff.png}
+  \caption{Trade-off between classification performance (Macro-F1) and computational cost measured as vectorization time. The x-axis is shown on a logarithmic scale.}
+  \label{fig:tradeoff}
+\end{figure}
+
+
+\section{Discussion}
+
+The results highlight a clear trade-off between semantic richness and computational efficiency in text representations for document classification. Despite their simplicity, TF-IDF representations achieve the highest performance on the AG News dataset, outperforming both averaged word embeddings and sentence embeddings. This suggests that, for topic-based news classification, lexical cues and keyword distributions remain highly informative and sufficient for accurate prediction.
+
+Embedding-based representations provide improved semantic modeling but do not consistently translate this advantage into higher classification performance in this setting. While SBERT embeddings outperform averaged fastText vectors, their gains remain limited compared to the TF-IDF baseline, despite incurring a substantially higher computational cost. This observation indicates that semantic robustness alone does not guarantee improved classification accuracy when class labels are strongly correlated with surface-level lexical patterns.
+
+From a computational perspective, the representation step dominates the overall cost of the pipeline. TF-IDF offers an attractive balance between efficiency and performance, whereas SBERT introduces a significant overhead that may be impractical for large-scale or time-sensitive applications. These findings suggest that the choice of text representation should be guided not only by representational power but also by task characteristics and resource constraints.
+\section{Error Analysis}
+
+To gain qualitative insight into the behavior of different text representations, we analyze representative misclassified examples from the test set. We first observe cases where TF-IDF fails while SBERT produces the correct prediction. For instance, an article describing IBM's hiring plans is misclassified by TF-IDF as Business due to the presence of economically related terms such as \emph{hire} and \emph{headcount}, whereas SBERT correctly identifies it as Sci/Tech by capturing the technological context of the company. Similarly, a political news article about the Venezuelan recall vote is incorrectly classified by TF-IDF as Business, likely due to references to the oil market, while SBERT correctly predicts the World category by modeling the broader geopolitical context.
+
+Conversely, we identify cases where TF-IDF succeeds and SBERT fails. Articles related to card fraud investigations or spam-related service suspensions are correctly classified by TF-IDF due to the presence of strong lexical indicators associated with technology-related topics. In these cases, SBERT tends to misclassify the documents as Business, suggesting that semantically rich representations may dilute highly discriminative keywords that are particularly effective for lexically driven classification tasks.
+
+These examples illustrate that while sentence embeddings improve robustness to lexical variation, they may underperform when class distinctions rely heavily on specific keywords. This further supports the conclusion that no single representation is universally optimal, and that the choice of representation should be guided by task characteristics.
+
+
+
+\section{Conclusion}
+
+This work presented a comparative study of text representations for document classification, focusing on the trade-off between semantic robustness and computational cost. Using the AG News dataset and a fixed logistic regression classifier, we showed that TF-IDF remains a strong and efficient baseline, achieving the highest classification performance with relatively low computational overhead. 
+
+While embedding-based representations, particularly sentence embeddings, provide richer semantic information, their increased computational cost does not necessarily translate into improved accuracy for lexically driven tasks such as news topic classification. Our findings highlight that the effectiveness of a text representation depends strongly on task characteristics and resource constraints. Overall, this study emphasizes the importance of carefully selecting text representations based on both performance requirements and computational considerations in practical text mining applications.
+
+\bibliography{custom}
+
+
+\end{document}
